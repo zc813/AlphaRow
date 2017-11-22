@@ -7,11 +7,11 @@ Created on Wed Nov 15 14:13:35 2017
 """
 
 from __future__ import print_function
-from logic.mcts import MCTS_logic
+from logic.mcts import MCTSLogic
 from logic.qlearning import Q_Learning
-import copy
+import interface
 
-class Board(object):
+class Board(interface.Status):
     """
     board for game
     """
@@ -25,18 +25,18 @@ class Board(object):
         self.player = 1
         self.rounds=0
 
-    def do_move(self, move):
-        if move not in self.availables:
+    def perform(self, action):
+        if action not in self.availables:
             raise ValueError
-        if move == 0:
+        if action == 0:
             self.pos = (self.pos[0]-1, self.pos[1])
-        elif move == 1:
+        elif action == 1:
             self.pos = (self.pos[0]+1, self.pos[1])
-        elif move == 2:
+        elif action == 2:
             self.pos = (self.pos[0], self.pos[1]-1)
-        elif move == 3:
+        elif action == 3:
             self.pos = (self.pos[0], self.pos[1]+1)
-        elif move == 4:
+        elif action == 4:
             pass
         self.states = {self.pos[0]+self.pos[1]*self.width:1}
         self.rounds += 1
@@ -55,25 +55,40 @@ class Board(object):
             availables.append(3)
         return availables
 
-    def has_a_winner(self):
+    def is_terminal(self) -> bool:
         if self.pos[0] >= self.width - 1 and self.pos[1]>=self.height-1 and self.rounds<self.max_rounds:
-            return True, 1
+            self.terminal = True
+            self.winner = 1
         elif self.rounds >= self.max_rounds:
-            return True, 2
+            self.terminal = True
+            self.winner = 2
         else:
-            return False, -1
+            self.terminal = False
+        return self.terminal
+
+    def get_result_score(self, player_idx=None):
+        if self.terminal:
+            return self.winner
+        else:
+            raise ValueError("Not terminated yet!")
 
     def game_end(self):
-        return self.has_a_winner()
+        terminated = self.is_terminal()
+        if terminated:
+            return True, self.get_result_score()
+        return False, -1
 
-    def get_current_player(self):
+    def get_current_player_idx(self):
         return self.player
 
-    def copy(self) -> 'Board':
-        return copy.deepcopy(self)
+    def get_available_actions(self):
+        return self._get_availables()
+
+    def to_number(self):
+        return self.pos
 
 
-class MCTS_Player(object):
+class MCTS_Player(interface.Player):
     """TODO: 实现这个MCTS player"""
     def __init__(self, player, logic=None):
         self.player = player
@@ -84,7 +99,7 @@ class MCTS_Player(object):
     def get_action(self, board):
         sensible_moves = board.availables
         if len(sensible_moves) > 0:
-            move = self.logic.get_move(board, self.player)
+            move = self.logic.get_action(board, self.player-1)
             print("AI move: %d\n" % (move))
             return move
         else:
@@ -94,7 +109,7 @@ class MCTS_Player(object):
         return "MCTS"
 
 
-class Human(object):
+class Human(interface.Player):
     """
     human player
     """
@@ -116,7 +131,7 @@ class Human(object):
     def __str__(self):
         return "Human"
 
-class Game(object):
+class Game(interface.Game):
     """
     game server
     """
@@ -136,7 +151,7 @@ class Game(object):
             print('Player %d' % (i+1))
             move = players[i].get_action(self.board)
             i = 1 - i
-            self.board.do_move(move)
+            self.board.perform(move)
             self.graphic(self.board)
             end, winner = self.board.game_end()
             if end:
@@ -145,6 +160,12 @@ class Game(object):
                 else:
                     print("Game end. Tie")
                 break
+
+    def get_player_num(self):
+        return 2
+
+    def set_player(self, idx, player):
+        pass
 
     def graphic(self, board):
         """

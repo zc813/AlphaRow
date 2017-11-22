@@ -1,8 +1,8 @@
-from logic.AI_logic import AI_Logic
+from logic.action_logic import ActionLogic
 import numpy as np
 from random import choice
 
-class Q_Learning(AI_Logic):
+class Q_Learning(ActionLogic):
     def __init__(self, space_width=9, action_num=9, player_num=2):
         self.action_num = action_num
         self.set_player_num(player_num)
@@ -12,10 +12,10 @@ class Q_Learning(AI_Logic):
         for i in range(space_width):
             self._states_weights[i] = (player_num + 1) ** i
 
-    def get_move(self, board, player):
-        state = self._get_state(board, player)
+    def get_action(self, status, player_idx):
+        state = self._get_state(status, player_idx)
         print(state, *self._qtable[state])
-        return self._choose_best_action(board, player)
+        return self._choose_best_action(status, player_idx)
 
     def train(self, board, iterations,):
         for i in range(iterations):
@@ -24,13 +24,13 @@ class Q_Learning(AI_Logic):
     def _play(self, simulation,epsilon=0.9,  # 1.0 for solely greedy policies
               alpha=0.1,
               gamma=0.9):
-        player = simulation.get_current_player()
+        player = simulation.get_current_player_idx()+1
         state = self._get_state(simulation, player)
         if np.random.random() <= epsilon:
             move = self._choose_best_action(simulation, player)
         else:
             move = choice(simulation.availables)
-        simulation.do_move(move)
+        simulation.perform(move)
         new_state = self._get_state(simulation, player)
         end, winner = simulation.game_end()
         i = player-1

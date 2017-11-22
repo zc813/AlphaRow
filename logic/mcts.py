@@ -1,35 +1,46 @@
-from logic.AI_logic import AI_Logic
+from logic.action_logic import ActionLogic
 from logic.treenode import TreeNode
 from heuristic.uct import UCT
 from random import choice
+from interface import Status
 
-class MCTS_logic(AI_Logic):
-    def __init__(self, heuristics=None):
+class MCTSLogic(ActionLogic):
+    def __init__(self, heuristics=None, evaluation_policy=None):
         self.heuristics = heuristics or UCT()
-        self.rollout_policy = 'random'
+        self.evaluation_policy = evaluation_policy or self._rollout_evaluation
+        self.prev_tree = None
 
-    def get_move(self, board, player, iterations = 3000):
-        tree = self._run(board, iterations, player)
+    def get_action(self, status:Status, player_idx, iterations=100, reuse=True):
+        """
+        TODO: Supports reuse of tree. Note that the new root might be one of the children or grand children of the current root.
+        :param status:
+        :param player_idx:
+        :param iterations:
+        :param reuse:
+        :return:
+        """
+        tree = self._run(status, iterations, player_idx, rootnode=None)
 
         # debug code
         availables = [child.element for child in tree.children]
-        for h in range(board.height-1, -1, -1):
+        for h in range(status.height-1, -1, -1):
             buffer = ''
-            for w in range(board.width):
-                i = board.location_to_move([h,w])
+            for w in range(status.width):
+                i = status.location_to_move([h, w])
                 out = 'VISIT SCORE UCB_1'
                 if i in availables:
                     loc = availables.index(i)
                     values = tree.children[loc].values
                     # out = '%.3f' % values['ucb1_2' if player == 2 else 'ucb1_1']
                     out = '%5d' % values['visited']
-                    out += ' %.3f' % (values['score%d'%player] / (values['score1'] + values['score2']))
-                    out += ' %.3f' % values['ucb1_%d'%player]
+                    out += ' %.3f' % (values['scores'][player_idx])
+                    # out += ' %.3f' % (values['uct'][player_idx])
                 buffer += '%d,%d:%s\t' % (h, w, out)
             print(buffer)
         # end debug code
 
-        best_node = self._select_best(tree, player)
+        best_node = self._select_best(tree, player_idx)
+        self.prev_tree = tree
         result = best_node.element
 
         if result is not None:
@@ -37,60 +48,75 @@ class MCTS_logic(AI_Logic):
         else:
             raise RuntimeError
 
-    def _run(self, board, iterations, player):
-        rootnode = self._new_node(None)
-        rootnode.values.update(self.heuristics.root_value())
+    def get_children_results(self):
+        if self.prev_tree is None:
+            raise ValueError("Tree not initialized!")
+        result = dict()
+        for child in self.prev_tree.children:
+            result[child.element] = self.heuristics.get_result(child.values)
+        return result
+
+    def _run(self, status, iterations, player_idx, rootnode=None):
+        if rootnode is None:
+            rootnode = self._new_node(None)
+            rootnode.values.update(self.heuristics.root_value())
         for i in range(iterations):
             # selection & expansion
-            simulation = board.copy()
-            leafnode = self._selection(simulation, rootnode, player)
+            simulation = status.copy()
+            leafnode = self._selection(simulation, rootnode, player_idx)
 
             # simulation
-            winner = self._rollout(simulation)
+            scores = self.evaluation_policy(simulation, leafnode)
 
             # back propagation
-            self._back_propagate(leafnode, self.heuristics.roundscore(winner))
+            self._back_propagate(leafnode, scores)
 
         return rootnode
 
-    def _selection(self, board: 'Board', root: 'TreeNode', player):
+    def _selection(self, status, root: 'TreeNode', player_idx):
         if root.is_leaf():
             if root.values['visited'] == 0:
                 return root
             else:
                 # expand when all children visited
-                self._expand(board, root)
+                self._expand(status, root)
                 # no available expansion
                 if root.is_leaf():
                     return root
-        if self._isterminal(board):
+        if self._isterminal(status):
             return root
 
         best = None
         # player = self._reverse_player(player)
         for child in root.children:
-            if self.heuristics.cmp(getattr(best, 'values', None), child.values, player):
+            if self.heuristics.cmp(getattr(best, 'values', None), child.values, player_idx):
                 best = child
 
-        board.do_move(best.element)
-        return self._selection(board, best, self._reverse_player(player))
+        status.perform(best.element)
+        return self._selection(status, best, status.get_current_player_idx())
 
-    def _isterminal(self, board : 'Board'):
-        if board.game_end()[0]:
+    def _isterminal(self, status):
+        if status.is_terminal():
             return True
         return False
 
-    def _rollout(self, board : 'Board') -> int:
-        if self.rollout_policy == 'random':
-            end, winner = board.game_end()
-            while board.availables and not end:
-                board.do_move(choice(board.availables))
-                end, winner = board.game_end()
-            return winner
+    def _rollout_evaluation(self, status, node):
+        winner = self._random_rollout(status)
+        if winner  == -1:
+            scores = [0.5] * self.heuristics.num_players
         else:
-            raise NotImplementedError
+            scores = [0] * self.heuristics.num_players
+            scores[winner-1]=1
+        return scores
 
-    def _back_propagate(self, leafnode, scores=[0,0]):
+    def _random_rollout(self, status) -> int:
+        end, winner = status.game_end()
+        while status.availables and not end:
+            status.perform(choice(status.availables))
+            end, winner = status.game_end()
+        return winner
+
+    def _back_propagate(self, leafnode, scores):
         self.heuristics.update_total_visits()
         l = list()
         while leafnode is not None:
@@ -98,10 +124,13 @@ class MCTS_logic(AI_Logic):
             leafnode = leafnode.parent
         while l:
             leafnode = l.pop()
-            self.heuristics.update_value(leafnode.values, scores, parent_values=leafnode.parent.values if leafnode.parent is not None else None)
+            self.heuristics.update_value(leafnode.values, scores,
+                                         parent_values=leafnode.parent.values
+                                         if leafnode.parent is not None
+                                         else None)
 
-    def _expand(self, board, node):
-        for move in board.availables:
+    def _expand(self, status, node):
+        for move in status.availables:
             node.add_child(self._new_node(move))
 
     def _new_node(self, element):
@@ -109,9 +138,9 @@ class MCTS_logic(AI_Logic):
         new_node.values.update(self.heuristics.init_value())
         return new_node
 
-    def _select_best(self, rootnode, player) -> 'TreeNode':
+    def _select_best(self, rootnode, player_idx) -> 'TreeNode':
         best = rootnode.children[0]
         for child in rootnode.children:
-            if self.heuristics.cmp_result(best.values, child.values, player):
+            if self.heuristics.cmp_result(best.values, child.values, player_idx):
                 best = child
         return best
