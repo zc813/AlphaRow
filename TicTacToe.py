@@ -25,8 +25,8 @@ class Board(interface.Status):
         self.height = int(kwargs.get('height', 8))
         self.states = {} # board states, key:move, value: player as piece type
         self.n_in_row = int(kwargs.get('n_in_row', 5)) # need how many pieces in a row to win
-        self.players = [1, 2] # player1 and player2
-        self.current_player = self.players[1]
+        self.players = [0, 1] # player1 and player2
+        self.current_player_idx = self.players[0]
         self.winner=-1
 
     def get_available_actions(self):
@@ -77,7 +77,7 @@ class Board(interface.Status):
         array = np.zeros((self.height, self.width, 2), dtype=np.uint8)
         for key, player in self.states.items():
             h, w = self.move_to_location(key)
-            array[h,w,player-1] = 1
+            array[h,w,player] = 1
         return array
 
     def init_board(self):
@@ -85,7 +85,7 @@ class Board(interface.Status):
             raise Exception('board width and height can not less than %d' % self.n_in_row)
         self.availables = list(range(self.width * self.height)) # available moves
         self.states = {} # key:move as location on the board, value:player as pieces type
-        self.current_player = self.players[1]
+        self.current_player_idx = self.players[0]
         self.winner = -1
 
     def move_to_location(self, move):
@@ -112,10 +112,10 @@ class Board(interface.Status):
         return move
 
     def perform(self, action):
-        self.states[action] = self.current_player
+        self.states[action] = self.current_player_idx
         self.availables.remove(action)
         #执行move之后，切换current player
-        self.current_player = self.players[0] if self.current_player == self.players[1] else self.players[1]
+        self.current_player_idx = self.players[0] if self.current_player_idx == self.players[1] else self.players[1]
 
     def has_a_winner(self):
         return self.is_terminal(), self.winner
@@ -130,7 +130,7 @@ class Board(interface.Status):
         return False, -1
 
     def get_current_player_idx(self):
-        return self.current_player-1
+        return self.current_player_idx
 
     def copy(self) -> 'Board':
         return copy.deepcopy(self)
@@ -138,10 +138,8 @@ class Board(interface.Status):
 
 class MCTS_Player(interface.Player):
     """TODO: 实现这个MCTS player"""
-    def __init__(self, player, logic=None):
+    def __init__(self, player, logic):
         self.player = player
-        if logic is None:
-            raise ValueError('`logic` must be specified.')
         self.logic = logic
 
     def get_action(self, board):
@@ -184,47 +182,36 @@ class Game(interface.Game):
     """
     game server
     """
-    def __init__(self, board, **kwargs):
-        self.board = board
+    def __init__(self, board=None, **kwargs):
+        self.board = board or Board(**kwargs)
+        self.players = [None, None]
         self.n_in_row = int(kwargs.get('n_in_row', 5))
 
     def get_player_num(self):
         return 2
 
     def set_player(self, idx, player):
-        pass
+        self.players[idx] = player
 
-    def start(self):
+    def start(self, graphic=False):
         self.board.init_board()
-        p1, p2 = self.board.players
-
-        ai = MCTS_Player(p2, MCTSLogic())
-        model = new_model((self.board.height, self.board.width, 2), self.board.height*self.board.width)
-        smarterai = AIPlayer(p2-1, ModelBasedMCTSLogic(model), True)
-        # human = MCTS_Player(p2, MCTS_logic())
-        human = Human(p1)
-        players = {}
-        players[p2] = smarterai
-        players[p1] = human
-        # ai.logic.train(self.board, 20000)
+        if graphic:
+            self.graphic(self.board, self.players[0], self.players[1])
         while(1):
-            self.board.init_board()
-            self.graphic(self.board, human, smarterai)
-            while(1):
-                current_player = self.board.get_current_player_idx()+1
-                # print(ai.logic._qtable[ai.logic._get_state(self.board,current_player)])
-                player_in_turn = players[current_player]
-                move = player_in_turn.get_action(self.board)
-                self.board.perform(move)
-                self.graphic(self.board, human, ai)
-                end, winner = self.board.game_end()
-                print(smarterai.get_history())
-                if end:
-                    if winner != -1:
-                        print("Game end. Winner is", players[winner])
-                    else:
-                        print("Game end. Tie")
-                    break
+            current_player = self.board.get_current_player_idx()
+            # print(ai.logic._qtable[ai.logic._get_state(self.board,current_player)])
+            player_in_turn = self.players[current_player]
+            move = player_in_turn.get_action(self.board)
+            self.board.perform(move)
+            if graphic:
+                self.graphic(self.board, self.players[0], self.players[1])
+            end, winner = self.board.game_end()
+            # print(smarterai.get_history())
+            if end:
+                if winner != -1:
+                    return [1, -1] if winner == 0 else [-1, 1]
+                else:
+                    return [0, 0]
 
     def graphic(self, board, human, ai):
         """
@@ -257,12 +244,17 @@ def run():
     # 可以先在 width=3, height=3, n=3 这种最简单的case下开发实验
     # 这种case下OK之后，再测试下 width=6, height=6, n=4 这种情况
     n = 4
-    try:
-        board = Board(width=6, height=6, n_in_row=n)
-        game = Game(board, n_in_row=n)
-        game.start()
-    except KeyboardInterrupt:
-        print('\n\rquit')
+    width, height = 6,6
+    board = Board(width=width, height=height, n_in_row=n)
+    input_shape=(height,width,2)
+    policy_width = height*width
+    game = Game(board, n_in_row=n)
+    model = new_model(input_shape, policy_width)
+    model.load_weights('latest_model.h5')
+    game.set_player(0, AIPlayer(0, ModelBasedMCTSLogic(model, iterations=1000)))
+    game.set_player(1, Human(1))
+    while True:
+        game.start(True)
 
 
 if __name__ == '__main__':

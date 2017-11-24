@@ -4,7 +4,7 @@ import math
 class PUCT(Heuristic):
     def __init__(self, num_player=2, c=1.0):
         super(PUCT, self).__init__(num_player)
-        self.append_default_values(prior_probability=1.0, puct=[math.inf]*self.num_players)
+        self.append_default_values(prior_probability=1.0, puct=[math.inf]*self.num_players, parent_visited=1)
         self.c = c
 
     def root_value(self):
@@ -14,6 +14,7 @@ class PUCT(Heuristic):
         if parent_values is None:
             return
         parent_visited = parent_values['visited']
+        values['parent_visited'] = parent_visited
         for i in range(self.num_players):
             values['puct'][i] = self.puct(avg=1.0*values['scores'][i]/values['visited'] if values['visited']!=0 else 0,
                                           probability=values['prior_probability'],
@@ -33,7 +34,7 @@ class PUCT(Heuristic):
         return self._cmp(a, b, 'visited')
 
     def get_result(self, values, player_idx=None):
-        return values['visited']
+        return values['visited'] * 1.0 / values['parent_visited']
 
     def _cmp(self, a, b, key, player_idx=None):
         if a is None:

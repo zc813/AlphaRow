@@ -17,14 +17,13 @@ class DataBuffer(object):
         self.x, self.y = self.init_data()
 
     def get_data(self):
-        if not self.data_buffer.empty():
-            return
         new_x, new_y = self.init_data()
         idx = 0
         l = list()
+        l.append(self.data_buffer.get(block=True))
         while True:
             try:
-                l.append(self.data_buffer.get())
+                l.append(self.data_buffer.get(block=False))
             except q.Empty:
                 break
         while l:
@@ -51,17 +50,22 @@ class DataBuffer(object):
             self.data_buffer.get()
 
 def alphazero_loss(y_true, y_pred):
-    z = y_true[-1]
-    v = y_pred[-1]
-    pi = y_true[:-1]
-    p = y_pred[:-1]
-    loss = K.square(z-v) - K.sum(pi * K.log(p), axis=-1)
+    z = y_true[:,-1]
+    v = y_pred[:,-1]
+    pi = y_true[:,:-1]
+    p = y_pred[:,:-1]
+    loss = K.square(z-v) - K.sum(pi * K.log(K.clip(p,1e-8,1)), axis=-1)
     return loss
 
-def run(databuffer:DataBuffer, model:Model, optimizer, metrics=None, batch_size=32, epochs=20):
-    gen = ImageDataGenerator(horizontal_flip=True, vertical_flip=True)
+def run(databuffer:DataBuffer, param_queue:Queue, model:Model, optimizer, metrics=None, batch_size=32, epochs=10, verbose=1, callbacks=None):
+    print('Optimizing started... waiting for data.')
+    # gen = ImageDataGenerator(horizontal_flip=True, vertical_flip=True)
     model.compile(optimizer=optimizer, loss=alphazero_loss, metrics=metrics)
     while True:
         x, y = databuffer.get_data()
-        gen.flow(x, y)
-        model.fit_generator(gen, databuffer.data_len//batch_size, epochs)
+        # x = np.zeros((500, 6, 6, 2), dtype=int)
+        # y = np.zeros((500,37), dtype=float)
+        print("Got data. Starting model optimizing...", x.shape, y.shape)
+        # model.fit_generator(gen.flow(x, y, batch_size=batch_size), databuffer.data_len//batch_size, epochs)
+        model.fit(x, y, batch_size=batch_size, epochs=epochs, verbose=verbose, callbacks=callbacks)
+        param_queue.put(model.get_weights())

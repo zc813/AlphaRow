@@ -1,6 +1,8 @@
 from interface import Player
 
 class AIPlayer(Player):
+    singleton_history = list()
+
     def __init__(self, player_idx, logic, monitor=False):
         self.logic = logic
         self.monitor = monitor
@@ -13,9 +15,20 @@ class AIPlayer(Player):
 
         if self.monitor:
             action_results = self.logic.get_children_results() # dict
-            self.history.append((status.to_number(), action_results))    # (s, pi, z)
+            status_compressed = status.to_number()
+            history_entry = (self.player_idx, status_compressed, action_results)
+            self.history.append(history_entry)    # (s, pi, z)
+            self.singleton_history.append(history_entry)
 
         return best_action
 
     def get_history(self,):
         return self.history
+
+    def get_singleton_history(self, ):
+        return self.singleton_history
+
+    def reset_history(self, ):
+        if self.monitor:
+            self.history.clear()
+        self.singleton_history.clear()

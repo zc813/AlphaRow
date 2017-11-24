@@ -5,12 +5,13 @@ from random import choice
 from interface import Status
 
 class MCTSLogic(ActionLogic):
-    def __init__(self, heuristics=None, evaluation_policy=None):
+    def __init__(self, heuristics=None, evaluation_policy=None, iterations=1600):
         self.heuristics = heuristics or UCT()
         self.evaluation_policy = evaluation_policy or self._rollout_evaluation
         self.prev_tree = None
+        self.iterations = iterations
 
-    def get_action(self, status:Status, player_idx, iterations=100, reuse=True):
+    def get_action(self, status:Status, player_idx, reuse=True):
         """
         TODO: Supports reuse of tree. Note that the new root might be one of the children or grand children of the current root.
         :param status:
@@ -19,25 +20,25 @@ class MCTSLogic(ActionLogic):
         :param reuse:
         :return:
         """
-        tree = self._run(status, iterations, player_idx, rootnode=None)
+        tree = self._run(status, self.iterations, player_idx, rootnode=None)
 
-        # debug code
-        availables = [child.element for child in tree.children]
-        for h in range(status.height-1, -1, -1):
-            buffer = ''
-            for w in range(status.width):
-                i = status.location_to_move([h, w])
-                out = 'VISIT SCORE UCB_1'
-                if i in availables:
-                    loc = availables.index(i)
-                    values = tree.children[loc].values
-                    # out = '%.3f' % values['ucb1_2' if player == 2 else 'ucb1_1']
-                    out = '%5d' % values['visited']
-                    out += ' %.3f' % (values['scores'][player_idx])
-                    # out += ' %.3f' % (values['uct'][player_idx])
-                buffer += '%d,%d:%s\t' % (h, w, out)
-            print(buffer)
-        # end debug code
+        # # debug code
+        # availables = [child.element for child in tree.children]
+        # for h in range(status.height-1, -1, -1):
+        #     buffer = ''
+        #     for w in range(status.width):
+        #         i = status.location_to_move([h, w])
+        #         out = 'VISIT SCORE UCB_1'
+        #         if i in availables:
+        #             loc = availables.index(i)
+        #             values = tree.children[loc].values
+        #             # out = '%.3f' % values['ucb1_2' if player == 2 else 'ucb1_1']
+        #             out = '%5d' % values['visited']
+        #             out += ' %.3f' % (values['scores'][player_idx])
+        #             # out += ' %.3f' % (values['uct'][player_idx])
+        #         buffer += '%d,%d:%s\t' % (h, w, out)
+        #     print(buffer)
+        # # end debug code
 
         best_node = self._select_best(tree, player_idx)
         self.prev_tree = tree

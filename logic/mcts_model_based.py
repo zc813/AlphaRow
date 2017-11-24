@@ -3,8 +3,8 @@ from heuristic.puct_variant import PUCT
 import numpy as np
 
 class ModelBasedMCTSLogic(MCTSLogic):
-    def __init__(self, model, heuristics=None):
-        super(ModelBasedMCTSLogic, self).__init__(heuristics or PUCT(), self.evaluation_policy)
+    def __init__(self, model, heuristics=None, iterations=1600):
+        super(ModelBasedMCTSLogic, self).__init__(heuristics or PUCT(), self.evaluation_policy, iterations=iterations)
         self.model = model
 
     def evaluation_policy(self, status, node):
