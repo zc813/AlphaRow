@@ -15,6 +15,7 @@ class DataBuffer(object):
         self.x_dtype = x_dtype
         self.y_dtype = y_dtype
         self.x, self.y = self.init_data()
+        self.n = 0
 
     def get_data(self):
         new_x, new_y = self.init_data()
@@ -33,9 +34,13 @@ class DataBuffer(object):
             idx += len(x)
             if idx >= self.data_len:
                 break
+        self.n += idx
         if idx < self.data_len:
             new_x[idx:self.data_len] = self.x[0:self.data_len-idx]
             new_y[idx:self.data_len] = self.y[0:self.data_len-idx]
+        if self.n < self.data_len:
+            new_x = new_x[0:self.n]
+            new_y = new_y[0:self.n]
         return new_x, new_y
 
     def init_data(self):
