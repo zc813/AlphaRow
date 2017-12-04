@@ -11,7 +11,13 @@ class Heuristic(object):
             self.node_default_values[key] = value
 
     def init_value(self) -> dict:
-        return copy.deepcopy(self.node_default_values)
+        # 将deep copy改为普通copy手动新建list后，per hit 时间降低88%，总_selection时间降低50.9%，MCTS 总时间降低 36.5%
+        # return copy.deepcopy(self.node_default_values)
+        tmp_dict = self.node_default_values.copy()
+        for key, value in self.node_default_values.items():
+            if isinstance(value, list) or isinstance(value, dict):
+                tmp_dict[key] = value.copy()
+        return tmp_dict
 
     def root_value(self):
         return dict(visited=1)

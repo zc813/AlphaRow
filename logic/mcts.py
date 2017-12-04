@@ -10,6 +10,7 @@ class MCTSLogic(ActionLogic):
         self.evaluation_policy = evaluation_policy or self._rollout_evaluation
         self.prev_tree = None
         self.iterations = iterations
+        self.iteration = 0
 
     def get_action(self, status:Status, player_idx, reuse=True):
         """
@@ -61,7 +62,7 @@ class MCTSLogic(ActionLogic):
         if rootnode is None:
             rootnode = self._new_node(None)
             rootnode.values.update(self.heuristics.root_value())
-        for i in range(iterations):
+        for self.iteration in range(iterations):
             # selection & expansion
             simulation = status.copy()
             leafnode = self._selection(simulation, rootnode, player_idx)
@@ -88,10 +89,15 @@ class MCTSLogic(ActionLogic):
             return root
 
         best = None
-        # player = self._reverse_player(player)
+        # for child in root.children:
+        #     if self.heuristics.cmp(getattr(best, 'values', None), child.values, player_idx):
+        #         best = child
+        best_value = self.heuristics.get_value(None, 0)
         for child in root.children:
-            if self.heuristics.cmp(getattr(best, 'values', None), child.values, player_idx):
+            current_value = self.heuristics.get_value(child.values, player_idx)
+            if current_value > best_value:
                 best = child
+                best_value = current_value
 
         status.perform(best.element)
         return self._selection(status, best, status.get_current_player_idx())
@@ -104,16 +110,16 @@ class MCTSLogic(ActionLogic):
     def _rollout_evaluation(self, status, node):
         winner = self._random_rollout(status)
         if winner  == -1:
-            scores = [0.5] * self.heuristics.num_players
-        else:
             scores = [0] * self.heuristics.num_players
-            scores[winner-1]=1
+        else:
+            scores = [-1] * self.heuristics.num_players
+            scores[winner]=1
         return scores
 
     def _random_rollout(self, status) -> int:
         end, winner = status.game_end()
-        while status.availables and not end:
-            status.perform(choice(status.availables))
+        while status.get_available_actions() and not end:
+            status.perform(choice(status.get_available_actions()))
             end, winner = status.game_end()
         return winner
 
@@ -131,7 +137,7 @@ class MCTSLogic(ActionLogic):
                                          else None)
 
     def _expand(self, status, node):
-        for move in status.availables:
+        for move in status.get_available_actions():
             node.add_child(self._new_node(move))
 
     def _new_node(self, element):

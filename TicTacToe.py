@@ -11,6 +11,7 @@ from logic.mcts import MCTSLogic
 from logic.mcts_model_based import ModelBasedMCTSLogic
 from logic.qlearning import Q_Learning
 from alphazero.models import new_model
+from heuristic.uct import UCT
 import interface
 import numpy as np
 import copy
@@ -77,7 +78,7 @@ class Board(interface.Status):
         array = np.zeros((self.height, self.width, 2), dtype=np.uint8)
         for key, player in self.states.items():
             h, w = self.move_to_location(key)
-            array[h,w,player] = 1
+            array[h,w,0 if player==self.get_current_player_idx() else 1] = 1
         return array
 
     def init_board(self):
@@ -133,35 +134,23 @@ class Board(interface.Status):
         return self.current_player_idx
 
     def copy(self) -> 'Board':
-        return copy.deepcopy(self)
-
-
-class MCTS_Player(interface.Player):
-    """TODO: 实现这个MCTS player"""
-    def __init__(self, player, logic):
-        self.player = player
-        self.logic = logic
-
-    def get_action(self, board):
-        sensible_moves = board.availables
-        if len(sensible_moves) > 0:
-            move = self.logic.get_action(board, self.player-1)
-            location = board.move_to_location(move)
-            print("AI move: %d,%d\n" % (location[0], location[1]))
-            return move
-        else:
-            print("WARNING: the board is full")
-
-    def __str__(self):
-        return "MCTS"
+        # return copy.deepcopy(self)
+        # 改为手动拷贝后，单次拷贝时间从 394ns 降低到 14ns，MCTS 总时间降低17.2%
+        new_board = Board(width=self.width, height=self.height, n_in_row=self.n_in_row)
+        new_board.states = self.states.copy()
+        new_board.winner = self.winner
+        new_board.players = self.players.copy()
+        new_board.availables = self.availables.copy()
+        new_board.current_player_idx = self.current_player_idx
+        return new_board
 
 class Human(interface.Player):
     """
     human player
     """
 
-    def __init__(self, player):
-        self.player = player
+    def __init__(self, player_idx):
+        self.player_idx = player_idx
 
     def get_action(self, board):
         try:
@@ -220,8 +209,8 @@ class Game(interface.Game):
         width = board.width
         height = board.height
 
-        print("Human Player", getattr(human, 'player', 0), "with X".rjust(3))
-        print("AI    Player", getattr(ai, 'player', 0), "with O".rjust(3))
+        print("Human Player", getattr(human, 'player_idx', 0), "with X".rjust(3))
+        print("AI    Player", getattr(ai, 'player_idx', 0), "with O".rjust(3))
         print()
         for x in range(width):
             print("{0:8}".format(x), end='')
@@ -231,9 +220,9 @@ class Game(interface.Game):
             for j in range(width):
                 loc = i * width + j
                 p = board.states.get(loc, -1)
-                if p == getattr(human, 'player', 0):
+                if p == getattr(human, 'player_idx', 0):
                     print('X'.center(8), end='')
-                elif p == getattr(ai, 'player', 0):
+                elif p == getattr(ai, 'player_idx', 0):
                     print('O'.center(8), end='')
                 else:
                     print('_'.center(8), end='')
@@ -251,7 +240,10 @@ def run():
     game = Game(board, n_in_row=n)
     model = new_model(input_shape, policy_width)
     model.load_weights('latest_model.h5')
-    game.set_player(0, AIPlayer(0, ModelBasedMCTSLogic(model, iterations=1000)))
+    logic = ModelBasedMCTSLogic(model, iterations=2000)
+    # logic = MCTSLogic(UCT(),iterations=5000)
+    game.set_player(0, AIPlayer(0, logic))
+    # game.set_player(1, AIPlayer(1, logic))
     game.set_player(1, Human(1))
     while True:
         game.start(True)

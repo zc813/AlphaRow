@@ -2,7 +2,6 @@ from keras import backend as K
 from keras.preprocessing.image import ImageDataGenerator
 from keras.models import Model
 import numpy as np
-from multiprocessing import Queue
 import queue as q
 
 class DataBuffer(object):
@@ -61,16 +60,3 @@ def alphazero_loss(y_true, y_pred):
     p = y_pred[:,:-1]
     loss = K.square(z-v) - K.sum(pi * K.log(K.clip(p,1e-8,1)), axis=-1)
     return loss
-
-def run(databuffer:DataBuffer, param_queue:Queue, model:Model, optimizer, metrics=None, batch_size=32, epochs=10, verbose=1, callbacks=None):
-    print('Optimizing started... waiting for data.')
-    # gen = ImageDataGenerator(horizontal_flip=True, vertical_flip=True)
-    model.compile(optimizer=optimizer, loss=alphazero_loss, metrics=metrics)
-    while True:
-        x, y = databuffer.get_data()
-        # x = np.zeros((500, 6, 6, 2), dtype=int)
-        # y = np.zeros((500,37), dtype=float)
-        print("Got data. Starting model optimizing...", x.shape, y.shape)
-        # model.fit_generator(gen.flow(x, y, batch_size=batch_size), databuffer.data_len//batch_size, epochs)
-        model.fit(x, y, batch_size=batch_size, epochs=epochs, verbose=verbose, callbacks=callbacks)
-        param_queue.put(model.get_weights())

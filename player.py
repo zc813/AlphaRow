@@ -10,7 +10,7 @@ class AIPlayer(Player):
         if monitor:
             self.history = list()
 
-    def get_action(self, status,):
+    def get_action(self, status, ):
         best_action = self.logic.get_action(status, self.player_idx)
 
         if self.monitor:

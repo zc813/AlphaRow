@@ -4,11 +4,10 @@ from queue import Empty as QueueEmptyError
 import numpy as np
 
 class GamePlayer(object):
-    def __init__(self, game_class, player_num, input_shape, policy_width, *args, **kwargs):
+    def __init__(self, game_class, player_num, policy_width, *args, **kwargs):
         self.game_class = game_class
         self.game_args = args
         self.game_kwargs = kwargs
-        self.input_shape = input_shape
         self.policy_width = policy_width
         self.player_num = player_num
 
@@ -51,7 +50,7 @@ class GamePlayer(object):
                 statuses.append(status)
                 actions.append(action) # dict
                 results.append(result[player_idx])
-            print("Round %d/%d. %d entries of history." % (i, game_rounds, len(history)))
+            print("PLAY | Round %d/%d. %d entries of history." % (i, game_rounds, len(history)))
             players[0].reset_history()
         x = np.array(statuses,)
         y = np.zeros((len(actions), self.policy_width+1,), float)
@@ -61,37 +60,7 @@ class GamePlayer(object):
             y[i, -1] = results[i]
         return x, y
 
-
-    def self_play_worker(self,game):
-        result = game.start()
-        return game.history, result
-
-
-def worker(game_player, best_logic, latest_logic, data_queue, param_queue, evaluation_fn=None):
-    evaluation_fn = evaluation_fn or max_eval_fn
-
-    while True:
-        params = None
-        while True:
-            try:
-                params = param_queue.get(block=False)
-            except QueueEmptyError:
-                break
-
-        if params is not None:
-            # print("Evaluation_worker shape: %s, length: %d" % (str(getattr(params, 'shape')), len(params)))
-            latest_logic.model.set_weights(params)
-            # results = game_player.evaluate(best_logic, latest_logic, 10)
-            # if evaluation_fn(results):
-            if True:
-                best_logic.model.set_weights(latest_logic.model.get_weights())
-
-        print("Starting self_playing...")
-        data = game_player.self_play(best_logic, 4)
-        print("Self-playing ended. Sending data,", data[0].shape, data[1].shape)
-        data_queue.put(data)
-
 def max_eval_fn(results):
-    if max(range(len(results)), key=results) == 0:
+    if max(range(len(results)), key=lambda i:results[i]) == 0:
         return True
     return False

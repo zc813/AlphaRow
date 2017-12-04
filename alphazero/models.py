@@ -21,7 +21,7 @@ def naive_model(input_shape, policy_width, parameters):
     x = Conv2D(32, (3, 3), kernel_initializer=initializer, bias_initializer=initializer)(x)
     # x = BatchNormalization()(x)
     x = Activation('relu')(x)
-    x = Conv2D(32, (3, 3), kernel_initializer=initializer, bias_initializer=initializer)(x)
+    x = Conv2D(32, (1, 1), kernel_initializer=initializer, bias_initializer=initializer)(x)
     # x = BatchNormalization()(x)
     x = Activation('relu')(x)
     without_head = x
@@ -31,7 +31,7 @@ def naive_model(input_shape, policy_width, parameters):
     # x = BatchNormalization()(x)
     x = Activation('relu')(x)
     x = Flatten()(x)
-    policy = Dense(policy_width, kernel_initializer=initializer, bias_initializer=initializer)(x)
+    policy = Dense(policy_width, activation='softmax', kernel_initializer=initializer, bias_initializer=initializer)(x)
 
     # Value net
     x = Conv2D(1, (1,1), kernel_initializer=initializer, bias_initializer=initializer)(without_head)
@@ -49,6 +49,6 @@ def naive_model(input_shape, policy_width, parameters):
     if parameters is not None:
         model.set_weights(parameters)
 
-    model.summary()
+    # model.summary()
 
     return model
