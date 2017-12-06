@@ -15,10 +15,13 @@ class Weights(object):
     def get_id(self):
         return self.update_id
 
-    def update(self, new_weights):
+    def update(self, new_weights, update_id=None):
         with self.lock:
             self.value[:] = new_weights
-            self.update_id += 1
+            if update_id is None:
+                self.update_id += 1
+            else:
+                self.update_id = update_id
         return self.get_id()
 
     def get(self):
@@ -54,9 +57,12 @@ class ParallelObject(object):
 class ServerManager(BaseManager): pass
 class ClientManager(BaseManager): pass
 
+def echoback(x):
+    return x
+
 def register(**kwargs):
     for key, value in kwargs.items():
-        ServerManager.register(key, callable=partial(lambda x:x, value))
+        ServerManager.register(key, callable=partial(echoback, value))
         ClientManager.register(key)
 
 def new_server(ip=default_ip, port=default_port, auth_key=default_auth_key):

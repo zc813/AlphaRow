@@ -16,11 +16,15 @@ class DataBuffer(object):
         self.x, self.y = self.init_data()
         self.n = 0
 
-    def get_data(self):
+    def get_data(self, min_amount=1):
         new_x, new_y = self.init_data()
         idx = 0
         l = list()
-        l.append(self.data_buffer.get(block=True))
+        amount = 0
+        while amount < min_amount:
+            data = self.data_buffer.get(block=True)
+            l.append(data)
+            amount += len(data[0])
         while True:
             try:
                 l.append(self.data_buffer.get(block=False))

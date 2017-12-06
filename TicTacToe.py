@@ -240,13 +240,18 @@ def run():
     game = Game(board, n_in_row=n)
     model = new_model(input_shape, policy_width)
     model.load_weights('latest_model.h5')
-    logic = ModelBasedMCTSLogic(model, iterations=2000)
+    logic = ModelBasedMCTSLogic(model, iterations=500, exploring=False)
     # logic = MCTSLogic(UCT(),iterations=5000)
     game.set_player(0, AIPlayer(0, logic))
     # game.set_player(1, AIPlayer(1, logic))
-    game.set_player(1, Human(1))
-    while True:
-        game.start(True)
+    game.set_player(1, AIPlayer(1,MCTSLogic(iterations=150)))
+    result = [0,0]
+    for i in range(20):
+        s0,s1 = game.start(True)
+        result[0] += max(s0,0)
+        result[1] += max(s1,0)
+        # print('Winner:', )
+    print(result)
 
 
 if __name__ == '__main__':

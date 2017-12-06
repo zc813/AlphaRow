@@ -22,6 +22,14 @@ class GamePlayer(object):
         return game
 
     def evaluate(self, best_logic, new_logic, game_rounds):
+        assert game_rounds & 1 == 0
+        result = self.eval_fn(best_logic, new_logic, game_rounds//2)
+        rev_result = self.eval_fn(new_logic, best_logic, game_rounds//2)
+        result[0] += np.average(rev_result[1:])
+        result[1:] += rev_result[0]
+        return result / 2
+
+    def eval_fn(self, best_logic, new_logic, game_rounds):
         players = [AIPlayer(0, new_logic, monitor=False)]
         players += [AIPlayer(i, best_logic, monitor=False) for i in range(1, self.player_num)]
         game = self.new_game(players=players)
@@ -50,7 +58,7 @@ class GamePlayer(object):
                 statuses.append(status)
                 actions.append(action) # dict
                 results.append(result[player_idx])
-            print("PLAY | Round %d/%d. %d entries of history." % (i, game_rounds, len(history)))
+            # print("PLAY | Round %d/%d. %d entries of history." % (i, game_rounds, len(history)))
             players[0].reset_history()
         x = np.array(statuses,)
         y = np.zeros((len(actions), self.policy_width+1,), float)
