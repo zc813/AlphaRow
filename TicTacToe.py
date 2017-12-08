@@ -29,9 +29,13 @@ class Board(interface.Status):
         self.players = [0, 1] # player1 and player2
         self.current_player_idx = self.players[0]
         self.winner=-1
+        self.round = 0
 
     def get_available_actions(self):
         return self.availables
+
+    def get_round(self):
+        return self.round
 
     def is_terminal(self) -> bool:
         width = self.width
@@ -88,6 +92,7 @@ class Board(interface.Status):
         self.states = {} # key:move as location on the board, value:player as pieces type
         self.current_player_idx = self.players[0]
         self.winner = -1
+        self.round = 0
 
     def move_to_location(self, move):
         """
@@ -115,6 +120,7 @@ class Board(interface.Status):
     def perform(self, action):
         self.states[action] = self.current_player_idx
         self.availables.remove(action)
+        self.round += 1
         #执行move之后，切换current player
         self.current_player_idx = self.players[0] if self.current_player_idx == self.players[1] else self.players[1]
 
@@ -240,18 +246,28 @@ def run():
     game = Game(board, n_in_row=n)
     model = new_model(input_shape, policy_width)
     model.load_weights('latest_model.h5')
-    logic = ModelBasedMCTSLogic(model, iterations=500, exploring=False)
+    logic = ModelBasedMCTSLogic(model, iterations=200, explore_rounds=0)
     # logic = MCTSLogic(UCT(),iterations=5000)
     game.set_player(0, AIPlayer(0, logic))
-    # game.set_player(1, AIPlayer(1, logic))
-    game.set_player(1, AIPlayer(1,MCTSLogic(iterations=150)))
+    # game.set_player(1, Human(1))
+    game.set_player(1, AIPlayer(1,MCTSLogic(iterations=200)))
     result = [0,0]
-    for i in range(20):
+    for i in range(10):
         s0,s1 = game.start(True)
         result[0] += max(s0,0)
         result[1] += max(s1,0)
         # print('Winner:', )
-    print(result)
+        print(result)
+    game.set_player(1, AIPlayer(1, logic))
+    # game.set_player(1, Human(1))
+    game.set_player(0, AIPlayer(0,MCTSLogic(iterations=200)))
+    for i in range(10):
+        s0,s1 = game.start(True)
+        result[1] += max(s0,0)
+        result[0] += max(s1,0)
+        # print('Winner:', )
+        print(result)
+
 
 
 if __name__ == '__main__':

@@ -7,6 +7,9 @@ class Status(object):
     def get_available_actions(self):
         raise NotImplementedError
 
+    def get_round(self):
+        raise NotImplementedError
+
     def perform(self, action):
         raise NotImplementedError
 

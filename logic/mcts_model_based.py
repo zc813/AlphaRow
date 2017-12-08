@@ -4,16 +4,16 @@ import numpy as np
 import math
 
 class ModelBasedMCTSLogic(MCTSLogic):
-    def __init__(self, model, heuristics=None, iterations=1600, exploring=True):
+    def __init__(self, model, heuristics=None, iterations=1600, explore_rounds=-1):
         super(ModelBasedMCTSLogic, self).__init__(heuristics or PUCT(), self.evaluation_policy, iterations=iterations)
         self.model = model
-        self.exploring = exploring
+        self.exploring = explore_rounds
 
     def evaluation_policy(self, status, node):
         prediction = self.model.predict(np.expand_dims(status.to_number(),0))
         policy = prediction[0,:-1]
         value = prediction[0,-1]
-        if self.iteration == 0 and self.exploring:
+        if self.iteration == 0 and (self.exploring < 0 or status.get_round() < self.exploring):
             policy *= 0.75
             policy += np.random.dirichlet([0.03]*36) * 0.25
         for child in node.children:
