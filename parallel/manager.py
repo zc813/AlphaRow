@@ -28,12 +28,12 @@ class Weights(object):
         return self.value
 
 class ParallelObject(object):
-    def __init__(self, type, manager, identity):
+    def __init__(self, instance, manager, identity):
         self.object = None
         self.manager = manager
         self.identity = identity
-        for attr in dir(type):
-            if attr.startswith('_') or not callable(getattr(type, attr, None)):
+        for attr in dir(instance):
+            if attr.startswith('_') or not callable(getattr(instance, attr, None)):
                 continue
             setattr(self, attr, partial(self._call_anything, attr))
 
@@ -60,9 +60,14 @@ class ClientManager(BaseManager): pass
 def echoback(x):
     return x
 
-def register(**kwargs):
+def register_server(**kwargs):
+    #  call before `new_server()`
     for key, value in kwargs.items():
         ServerManager.register(key, callable=partial(echoback, value))
+
+def register_client(*args):
+    #  call before `new_client()`
+    for key in args:
         ClientManager.register(key)
 
 def new_server(ip=default_ip, port=default_port, auth_key=default_auth_key):

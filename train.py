@@ -2,8 +2,8 @@ from alphazero.optimize import alphazero_loss, DataBuffer
 from alphazero.eval_self_play import max_eval_fn
 from keras.optimizers import SGD, RMSprop
 from alphazero import models, eval_self_play
-from queue import Queue
-from parallel.manager import Weights, ParallelObject, register, new_server, new_client
+from multiprocessing import Queue
+from parallel.manager import Weights, ParallelObject, register_server, register_client, new_server, new_client
 from multiprocessing import Process
 from logic.mcts_model_based import ModelBasedMCTSLogic
 from keras.callbacks import TensorBoard, Callback
@@ -12,6 +12,7 @@ from parallel.manager import Weights
 import os.path
 import numpy as np
 import time
+import argparse
 
 width, height, n = 6, 6, 4
 input_shape = (height, width, 2)
@@ -19,7 +20,8 @@ policy_width = width * height
 savetopath = 'latest_model.h5'
 mcts_iterations = 200
 
-def self_play_worker(data_queue, in_weights):
+def self_play_worker(ip):
+    data_queue, _, in_weights = start_client(ip)
     np.random.seed()
     game_player = new_game_player()
     logic = new_logic()
@@ -34,7 +36,8 @@ def self_play_worker(data_queue, in_weights):
         print("PLAY | Sending data,", data[0].shape, data[1].shape)
         data_queue.put(data)
 
-def evaluate_worker(out_weights, in_weights, rounds, evaluation_fn=None):
+def evaluate_worker(rounds, evaluation_fn=None):
+    _, in_weights, out_weights = start_client()
     evaluation_fn = evaluation_fn or max_eval_fn
     game_player = new_game_player()
     latest_logic = new_logic(explore_rounds=2)
@@ -116,32 +119,56 @@ class SaveOnTrainingEnd(Callback):
     def on_train_end(self, logs=None):
         self.model.save_weights(self.save_path)
 
-if __name__=='__main__':
+def start_server():
     data_queue = Queue()
     latest_weights, best_weights = Weights(), Weights()
-    register(data_queue=data_queue, latest_weights=latest_weights, best_weights=best_weights)
+    register_server(data_queue=data_queue, latest_weights=latest_weights, best_weights=best_weights)
     server = new_server()
-    server.start()
+    server.get_server().serve_forever()
 
-    client = new_client()
-    data_queue = ParallelObject(Queue, client, 'data_queue')
-    latest_weights = ParallelObject(Weights, client, 'latest_weights')
-    best_weights = ParallelObject(Weights, client, 'best_weights')
+def start_client(ip='127.0.0.1'):
+    # data_queue = Queue()
+    # latest_weights, best_weights = Weights(), Weights()
+    register_client('data_queue', 'latest_weights', 'best_weights')
+    client = new_client(ip=ip)
+    client.connect()
+    data_queue = client.data_queue()
+    latest_weights = client.latest_weights()
+    best_weights = client.best_weights()
+    # data_queue = ParallelObject(data_queue, client, 'data_queue')
+    # latest_weights = ParallelObject(latest_weights, client, 'latest_weights')
+    # best_weights = ParallelObject(best_weights, client, 'best_weights')
+    return data_queue, latest_weights, best_weights
+
+if __name__=='__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--workers', '-w', type=int, default=3, help='number of self-play workers')
+    parser.add_argument('--client', '-c', type=str, help='sole client of self-play')
+    args = vars(parser.parse_args())
+    num_processes = args.get('workers')
+    ip = args.get('client')
+    if ip is not None:
+        is_client = True
+    else:
+        is_client = False
+        ip = '127.0.0.1'
+
+    # start new server
+    p = Process(target=start_server)
+    p.start()
 
     # self-play
-    num_processes = 3
     for i in range(num_processes):
-        p = Process(target=self_play_worker, args=(data_queue, best_weights))
+        p = Process(target=self_play_worker, args=(ip,))
         time.sleep(0.5)
         p.start()
 
-    # exit(0)
-
     # evaluation
-    p = Process(target=evaluate_worker, args=(best_weights, latest_weights, 10))
+    p = Process(target=evaluate_worker, args=(10,))
     p.start()
 
     # optimization
+    data_queue, latest_weights, _ = start_client()
     data = DataBuffer(input_shape, policy_width, data_len=2000, queue=data_queue)
     # tensorboard_callback = TensorBoard(write_images=True, write_grads=True)
     save_callback = SaveOnTrainingEnd(savetopath)
