@@ -20,7 +20,8 @@ class ModelBasedMCTSLogic(MCTSLogic):
             child.values['prior_probability'] = policy[child.element]
             self.heuristics.update_appended_value(child.values, None, node.values)
         scores = [-value] * self.heuristics.num_players
-        scores[1-status.get_current_player_idx()] = value   # does not support multiple players
+        # scores[1-status.get_current_player_idx()] = value   # does not support multiple players
+        scores[status.get_current_player_idx()] = value  # i think this is the right one
         return scores
 
     def _selection(self, status, root, player_idx):

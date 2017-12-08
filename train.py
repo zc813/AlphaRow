@@ -130,6 +130,7 @@ def start_client(ip='127.0.0.1'):
     # data_queue = Queue()
     # latest_weights, best_weights = Weights(), Weights()
     register_client('data_queue', 'latest_weights', 'best_weights')
+    print(ip)
     client = new_client(ip=ip)
     client.connect()
     data_queue = client.data_queue()
@@ -153,9 +154,10 @@ if __name__=='__main__':
         is_client = False
         ip = '127.0.0.1'
 
-    # start new server
-    p = Process(target=start_server)
-    p.start()
+    if not is_client:
+        # start new server
+        p = Process(target=start_server)
+        p.start()
 
     # self-play
     for i in range(num_processes):
@@ -163,20 +165,21 @@ if __name__=='__main__':
         time.sleep(0.5)
         p.start()
 
-    # evaluation
-    p = Process(target=evaluate_worker, args=(10,))
-    p.start()
+    if not is_client:
+        # evaluation
+        p = Process(target=evaluate_worker, args=(10,))
+        p.start()
 
-    # optimization
-    data_queue, latest_weights, _ = start_client()
-    data = DataBuffer(input_shape, policy_width, data_len=2000, queue=data_queue)
-    # tensorboard_callback = TensorBoard(write_images=True, write_grads=True)
-    save_callback = SaveOnTrainingEnd(savetopath)
-    optimize(databuffer=data,
-             out_weights=latest_weights,
-            #  optimizer=SGD(lr=1e-2, momentum=0.9, nesterov=True),
-             optimizer=RMSprop(),
-             epochs=50,
-             batch_size=32,
-             verbose=0,
-             callbacks=[])
+        # optimization
+        data_queue, latest_weights, _ = start_client()
+        data = DataBuffer(input_shape, policy_width, data_len=2000, queue=data_queue)
+        # tensorboard_callback = TensorBoard(write_images=True, write_grads=True)
+        save_callback = SaveOnTrainingEnd(savetopath)
+        optimize(databuffer=data,
+                 out_weights=latest_weights,
+                #  optimizer=SGD(lr=1e-2, momentum=0.9, nesterov=True),
+                 optimizer=RMSprop(),
+                 epochs=50,
+                 batch_size=32,
+                 verbose=0,
+                 callbacks=[])
