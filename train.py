@@ -13,6 +13,7 @@ import os.path
 import numpy as np
 import time
 import argparse
+from gpuscheduler import set_gpu_fraction
 
 width, height, n = 6, 6, 4
 input_shape = (height, width, 2)
@@ -22,6 +23,7 @@ mcts_iterations = 200
 debug = True
 
 def self_play_worker(ip):
+    set_gpu_fraction(0)
     data_queue, _, in_weights = start_client(ip)
     np.random.seed()
     game_player = new_game_player()
@@ -38,6 +40,7 @@ def self_play_worker(ip):
         data_queue.put(data)
 
 def evaluate_worker(rounds, evaluation_fn=None, ip=None):
+    set_gpu_fraction(0)
     _, in_weights, out_weights = start_client(ip=ip)
     evaluation_fn = evaluation_fn or max_eval_fn
     game_player = new_game_player()
@@ -95,6 +98,7 @@ def optimize(databuffer, out_weights, optimizer, metrics=None, batch_size=32, ep
         #         print(y_test[i,:36].reshape(6,6))
         #         print("PROBABILITY", y_test[i,36])
         #         print("----------------------------")
+        begin_time = time.time()
         print("TRAN | Got data. Starting model optimizing...", x.shape, y.shape)
         if augmentation:
             y_policy = np.reshape(y[:,:-1],(len(y),height,width)) #(num, height, width)
@@ -103,8 +107,8 @@ def optimize(databuffer, out_weights, optimizer, metrics=None, batch_size=32, ep
             y_policy = augment(y_policy)
             y = np.insert(y_policy.reshape(len(y_policy), policy_width), policy_width, replicate(y_value), axis=1)
             print('TRAN | Augmented:', x.shape, y.shape)
-        history = model.fit(x, y, batch_size=batch_size, epochs=epochs, verbose=verbose, callbacks=callbacks)
-        print('TRAN | Training finished (%d epochs). Sending weights.' % epochs)
+        history = model.fit(x, y, batch_size=batch_size, epochs=epochs, verbose=verbose, callbacks=callbacks, )
+        print('TRAN | Training finished (%d epochs). Sending weights. Time: %.2fs' % (epochs, time.time()-begin_time))
         print('TRAN | Loss:', *map(lambda f: format(f, '.3f'),history.history['loss']))
         out_weights.update(model.get_weights())
 
@@ -148,6 +152,7 @@ class SaveOnTrainingEnd(Callback):
         self.model.save_weights(self.save_path)
 
 def start_server():
+    set_gpu_fraction(0)
     data_queue = Queue()
     latest_weights, best_weights = Weights(), Weights()
     register_server(data_queue=data_queue, latest_weights=latest_weights, best_weights=best_weights)
@@ -193,7 +198,7 @@ if __name__=='__main__':
         # start new server
         p = Process(target=start_server)
         p.start()
-        time.sleep(0.5)
+        time.sleep(1.0)
 
     # self-play
     for i in range(num_processes):
@@ -208,6 +213,7 @@ if __name__=='__main__':
 
     if has_optimizer:
         # optimization
+        # set_gpu_fraction(0.8)
         data_queue, latest_weights, _ = start_client(ip=ip)
         data = DataBuffer(input_shape, policy_width, data_len=20000, queue=data_queue)
         # tensorboard_callback = TensorBoard(write_images=True, write_grads=True)

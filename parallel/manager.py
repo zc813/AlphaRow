@@ -71,7 +71,7 @@ def register_client(*args):
         ClientManager.register(key)
 
 def new_server(ip=default_ip, port=default_port, auth_key=default_auth_key):
-    manager = ServerManager((ip, port), auth_key)
+    manager = ServerManager(('0.0.0.0', port), auth_key)
     return manager
 
 def new_client(ip=default_ip, port=default_port, auth_key=default_auth_key):
