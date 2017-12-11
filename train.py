@@ -183,6 +183,7 @@ if __name__=='__main__':
     parser.add_argument('-p', '--selfplay', type=int, default=3, metavar='N', help='number of self-play workers')
     parser.add_argument('--noevaluate', '-e', action='store_true')
     parser.add_argument('--nooptimize', '-o', action='store_true')
+    parser.add_argument('--gpu', action='store_true')
     args = vars(parser.parse_args())
     num_processes = args.get('selfplay')
     ip = args.get('client')
@@ -193,6 +194,10 @@ if __name__=='__main__':
         ip = '127.0.0.1'
     has_evaluator = not args.get('noevaluate')
     has_optimizer = not args.get('nooptimize')
+    use_gpu = args.get('gpu')
+
+    if not use_gpu:
+        set_gpu_fraction(0)
 
     if not is_client:
         # start new server
