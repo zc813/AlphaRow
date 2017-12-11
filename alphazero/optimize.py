@@ -13,7 +13,7 @@ class DataBuffer(object):
         self.policy_width = policy_width
         self.x_dtype = x_dtype
         self.y_dtype = y_dtype
-        self.x, self.y = self.init_data()
+        self.x, self.y = None, None
         self.n = 0
 
     def get_data(self, min_amount=1, sample=0):
@@ -42,17 +42,24 @@ class DataBuffer(object):
                 idx = self.data_len
                 break
         self.n += idx
-        if idx < self.data_len:
+        if idx < self.data_len and self.x is not None:
             new_x[idx:self.data_len] = self.x[0:self.data_len-idx]
             new_y[idx:self.data_len] = self.y[0:self.data_len-idx]
+        # 天啊这么久居然没发现 self.x self.y 这两个一直是空的，真是醉了。
+        # 耻辱柱级bug
+        self.x, self.y = new_x, new_y
+        # +↑
         if self.n < self.data_len:
             new_x = new_x[0:self.n]
             new_y = new_y[0:self.n]
         if sample > 0 and sample < self.n:
             new_random_x, new_random_y = new_x.copy(), new_y.copy()
-            np.random.shuffle(new_random_x)
-            np.random.shuffle(new_random_y)
-            return new_random_x[:sample], new_random_y[:sample]
+            # STUPID! 这个bug简直可以挂在耻辱柱上了
+            # np.random.shuffle(new_random_x)
+            # np.random.shuffle(new_random_y)
+            # return new_random_x[:sample], new_random_y[:sample]
+            rand_idx = np.random.choice(np.arange(min(self.n, self.data_len)), sample)
+            return new_random_x[rand_idx], new_random_y[rand_idx]
         return new_x, new_y
 
     def init_data(self):
