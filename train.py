@@ -66,7 +66,7 @@ def optimize(databuffer, out_weights, optimizer, metrics=None, batch_size=32, ep
     model.compile(optimizer=optimizer, loss=alphazero_loss, metrics=metrics)
     print('TRAN | Optimizing started... waiting for data.')
     while True:
-        x, y = databuffer.get_data(300)
+        x, y = databuffer.get_data(500, sample=2000)
         print("TRAN | Got data. Starting model optimizing...", x.shape, y.shape)
         if augmentation:
             y_policy = np.reshape(y[:,:-1],(len(y),height,width)) #(num, height, width)
@@ -158,6 +158,7 @@ if __name__=='__main__':
         # start new server
         p = Process(target=start_server)
         p.start()
+        time.sleep(0.5)
 
     # self-play
     for i in range(num_processes):
@@ -172,14 +173,14 @@ if __name__=='__main__':
 
         # optimization
         data_queue, latest_weights, _ = start_client()
-        data = DataBuffer(input_shape, policy_width, data_len=2000, queue=data_queue)
+        data = DataBuffer(input_shape, policy_width, data_len=20000, queue=data_queue)
         # tensorboard_callback = TensorBoard(write_images=True, write_grads=True)
         save_callback = SaveOnTrainingEnd(savetopath)
         optimize(databuffer=data,
                  out_weights=latest_weights,
-                #  optimizer=SGD(lr=1e-2, momentum=0.9, nesterov=True),
-                 optimizer=RMSprop(),
-                 epochs=50,
+                 optimizer=SGD(lr=1e-2, momentum=0.9, nesterov=True),
+                #  optimizer=RMSprop(),
+                 epochs=30,
                  batch_size=32,
                  verbose=0,
                  callbacks=[])

@@ -16,7 +16,7 @@ class DataBuffer(object):
         self.x, self.y = self.init_data()
         self.n = 0
 
-    def get_data(self, min_amount=1):
+    def get_data(self, min_amount=1, sample=0):
         new_x, new_y = self.init_data()
         idx = 0
         l = list()
@@ -32,10 +32,14 @@ class DataBuffer(object):
                 break
         while l:
             x, y = l.pop()
-            new_x[idx:min(idx+len(x),self.data_len)] = x
-            new_y[idx:min(idx + len(y), self.data_len)] = y
-            idx += len(x)
-            if idx >= self.data_len:
+            if idx+len(x) < self.data_len:
+                new_x[idx:idx+len(x)] = x
+                new_y[idx:idx+len(y)] = y
+                idx += len(x)
+            else:
+                new_x[idx:self.data_len] = x[:self.data_len-idx]
+                new_y[idx:self.data_len] = y[:self.data_len-idx]
+                idx = self.data_len
                 break
         self.n += idx
         if idx < self.data_len:
@@ -44,6 +48,11 @@ class DataBuffer(object):
         if self.n < self.data_len:
             new_x = new_x[0:self.n]
             new_y = new_y[0:self.n]
+        if sample > 0 and sample < self.n:
+            new_random_x, new_random_y = new_x.copy(), new_y.copy()
+            np.random.shuffle(new_random_x)
+            np.random.shuffle(new_random_y)
+            return new_random_x[:sample], new_random_y[:sample]
         return new_x, new_y
 
     def init_data(self):
