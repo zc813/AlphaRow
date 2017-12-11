@@ -19,30 +19,30 @@ def naive_model(input_shape, policy_width, parameters):
     inputs = Input(input_shape)
 
     # Main net. Should be improved
-    x = Conv2D(32, (1, 1), kernel_initializer=initializer, bias_initializer=initializer, activation='relu', kernel_regularizer=regularizers.l2())(inputs)
-    x = Conv2D(32, (3, 3), kernel_initializer=initializer, bias_initializer=initializer, kernel_regularizer=regularizers.l2())(x)
+    x = Conv2D(32, (1, 1), kernel_initializer=initializer, bias_initializer=initializer, activation='relu', kernel_regularizer=regularizers.l2(1e-4))(inputs)
+    x = Conv2D(32, (3, 3), kernel_initializer=initializer, bias_initializer=initializer, kernel_regularizer=regularizers.l2(1e-4))(x)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
-    x = Conv2D(64, (1, 1), kernel_initializer=initializer, bias_initializer=initializer, activation='relu', kernel_regularizer=regularizers.l2())(x)
-    x = Conv2D(64, (1, 1), kernel_initializer=initializer, bias_initializer=initializer)(x)
+    x = Conv2D(64, (1, 1), kernel_initializer=initializer, bias_initializer=initializer, activation='relu', kernel_regularizer=regularizers.l2(1e-4))(x)
+    x = Conv2D(64, (1, 1), kernel_initializer=initializer, bias_initializer=initializer, kernel_regularizer=regularizers.l2(1e-4))(x)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
     without_head = x
 
     # Policy net
-    x = Conv2D(2, (1,1), kernel_initializer=initializer, bias_initializer=initializer, kernel_regularizer=regularizers.l2())(without_head)
+    x = Conv2D(2, (1,1), kernel_initializer=initializer, bias_initializer=initializer, kernel_regularizer=regularizers.l2(1e-4))(without_head)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
     x = Flatten()(x)
-    policy = Dense(policy_width, activation='softmax', kernel_initializer=initializer, bias_initializer=initializer, kernel_regularizer=regularizers.l2())(x)
+    policy = Dense(policy_width, activation='softmax', kernel_initializer=initializer, bias_initializer=initializer, kernel_regularizer=regularizers.l2(1e-4))(x)
 
     # Value net
-    x = Conv2D(1, (1,1), kernel_initializer=initializer, bias_initializer=initializer, kernel_regularizer=regularizers.l2())(without_head)
+    x = Conv2D(1, (1,1), kernel_initializer=initializer, bias_initializer=initializer, kernel_regularizer=regularizers.l2(1e-4))(without_head)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
     x = Flatten()(x)
-    x = Dense(64, activation='relu', kernel_initializer=initializer, bias_initializer=initializer, kernel_regularizer=regularizers.l2())(x)
-    x = Dense(1, activation='tanh', kernel_initializer=initializer, bias_initializer=initializer, kernel_regularizer=regularizers.l2())(x)
+    x = Dense(64, activation='relu', kernel_initializer=initializer, bias_initializer=initializer, kernel_regularizer=regularizers.l2(1e-4))(x)
+    x = Dense(1, activation='tanh', kernel_initializer=initializer, bias_initializer=initializer, kernel_regularizer=regularizers.l2(1e-4))(x)
     value = x
 
     # Concatenation

@@ -4,10 +4,11 @@ import numpy as np
 import math
 
 class ModelBasedMCTSLogic(MCTSLogic):
-    def __init__(self, model, heuristics=None, iterations=1600, explore_rounds=-1):
+    def __init__(self, model, heuristics=None, iterations=1600, explore_rounds=-1, verbose=False):
         super(ModelBasedMCTSLogic, self).__init__(heuristics or PUCT(), self.evaluation_policy, iterations=iterations)
         self.model = model
         self.exploring = explore_rounds
+        self.verbose = verbose
 
     def evaluation_policy(self, status, node):
         prediction = self.model.predict(np.expand_dims(status.to_number(),0))

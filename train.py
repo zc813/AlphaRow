@@ -72,16 +72,16 @@ def optimize(databuffer, out_weights, optimizer, metrics=None, batch_size=32, ep
     while True:
         x, y = databuffer.get_data(500, sample=2000)
         # if debug:
-        #     # # DEBUG CODE 1
-        #     # for i in range(30):
-        #     #     print("SELF:")
-        #     #     print(x[i,:,:,0])
-        #     #     print("OPPONENT:")
-        #     #     print(x[i,:,:,1])
-        #     #     print("SCORES:")
-        #     #     print(y[i,:36].reshape(6,6))
-        #     #     print("PROBABILITY", y[i,36])
-        #     #     print("----------------------------")
+        # DEBUG CODE 1
+        # for i in range(30):
+        #     print("SELF:")
+        #     print(x[i,:,:,0])
+        #     print("OPPONENT:")
+        #     print(x[i,:,:,1])
+        #     print("SCORES:")
+        #     print(y[i,:36].reshape(6,6))
+        #     print("PROBABILITY", y[i,36])
+        #     print("----------------------------")
         #
         #     # DEBUG CODE 2
         #     y_policy = np.reshape(y[:3, :-1], (3, height, width))  # (num, height, width)

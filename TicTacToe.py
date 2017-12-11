@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """
 Created on Wed Nov 15 14:13:35 2017
 @author: sjxn2423
@@ -16,6 +16,7 @@ import interface
 import numpy as np
 import copy
 from player import AIPlayer
+from gpuscheduler import set_gpu_fraction
 
 class Board(interface.Status):
     """
@@ -238,6 +239,7 @@ class Game(interface.Game):
 def run():
     # 可以先在 width=3, height=3, n=3 这种最简单的case下开发实验
     # 这种case下OK之后，再测试下 width=6, height=6, n=4 这种情况
+    set_gpu_fraction(0)
     n = 4
     width, height = 6,6
     board = Board(width=width, height=height, n_in_row=n)
@@ -246,11 +248,11 @@ def run():
     game = Game(board, n_in_row=n)
     model = new_model(input_shape, policy_width)
     model.load_weights('latest_model.h5')
-    logic = ModelBasedMCTSLogic(model, iterations=200, explore_rounds=0)
-    # logic = MCTSLogic(UCT(),iterations=5000)
+    logic = ModelBasedMCTSLogic(model, iterations=200, explore_rounds=0, verbose=True)
+    # logic = MCTSLogic(UCT(),iterations=500)
     game.set_player(0, AIPlayer(0, logic))
-    # game.set_player(1, Human(1))
-    game.set_player(1, AIPlayer(1,MCTSLogic(iterations=200)))
+    game.set_player(1, Human(1))
+    #game.set_player(1, AIPlayer(1,MCTSLogic(iterations=250)))
     result = [0,0]
     for i in range(10):
         s0,s1 = game.start(True)

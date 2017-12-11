@@ -16,7 +16,7 @@ class AIPlayer(Player):
         if self.monitor:
             action_results = self.logic.get_children_results() # dict
             status_compressed = status.to_number()
-            history_entry = (self.player_idx, status_compressed, action_results)
+            history_entry = (self.player_idx, status_compressed, action_results, status.get_round())
             self.history.append(history_entry)    # (s, pi, z)
             self.singleton_history.append(history_entry)
 

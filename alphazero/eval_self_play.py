@@ -45,19 +45,25 @@ class GamePlayer(object):
         # avg_result = [result * 1.0 / game_rounds for result in cumulative_result]
         return avg_result
 
-    def self_play(self, logic, game_rounds):
+    def self_play(self, logic, game_rounds, temperature=None):
+        if not callable(temperature):
+            t = lambda round: 1.0
+        else:
+            t = temperature
         players = [AIPlayer(i, logic, monitor=True) for i in range(self.player_num)]
         game = self.new_game(players=players)
         statuses = list()
         actions = list()
         results = list()
+        rounds = list()
         for i in range(game_rounds):
             result = game.start()
             history = players[0].get_singleton_history()
-            for player_idx, status, action in history:
+            for player_idx, status, action, round in history:
                 statuses.append(status)
                 actions.append(action) # dict
                 results.append(result[player_idx])
+                rounds.append(round)
             # print("PLAY | Round %d/%d. %d entries of history." % (i, game_rounds, len(history)))
             players[0].reset_history()
         x = np.array(statuses,)
@@ -65,6 +71,9 @@ class GamePlayer(object):
         for i, action in enumerate(actions):
             for key, value in action.items():
                 y[i, key] = value
+            y[i] = np.power(y[i], t(rounds[i]))
+            squaresum = np.sum(y[i])
+            y[i] /= squaresum
             y[i, -1] = results[i]
         return x, y
 
