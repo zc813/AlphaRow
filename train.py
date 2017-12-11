@@ -19,6 +19,7 @@ input_shape = (height, width, 2)
 policy_width = width * height
 savetopath = 'latest_model.h5'
 mcts_iterations = 200
+debug = True
 
 def self_play_worker(ip):
     data_queue, _, in_weights = start_client(ip)
@@ -67,6 +68,33 @@ def optimize(databuffer, out_weights, optimizer, metrics=None, batch_size=32, ep
     print('TRAN | Optimizing started... waiting for data.')
     while True:
         x, y = databuffer.get_data(500, sample=2000)
+        # if debug:
+        #     # # DEBUG CODE 1
+        #     # for i in range(30):
+        #     #     print("SELF:")
+        #     #     print(x[i,:,:,0])
+        #     #     print("OPPONENT:")
+        #     #     print(x[i,:,:,1])
+        #     #     print("SCORES:")
+        #     #     print(y[i,:36].reshape(6,6))
+        #     #     print("PROBABILITY", y[i,36])
+        #     #     print("----------------------------")
+        #
+        #     # DEBUG CODE 2
+        #     y_policy = np.reshape(y[:3, :-1], (3, height, width))  # (num, height, width)
+        #     y_value = y[:3, -1]  # (num,)
+        #     x_test = augment(x[:3])
+        #     y_policy = augment(y_policy)
+        #     y_test = np.insert(y_policy.reshape(len(y_policy), policy_width), policy_width, replicate(y_value), axis=1)
+        #     for i in range(24):
+        #         print("SELF:")
+        #         print(x_test[i,:,:,0])
+        #         print("OPPONENT:")
+        #         print(x_test[i,:,:,1])
+        #         print("SCORES:")
+        #         print(y_test[i,:36].reshape(6,6))
+        #         print("PROBABILITY", y_test[i,36])
+        #         print("----------------------------")
         print("TRAN | Got data. Starting model optimizing...", x.shape, y.shape)
         if augmentation:
             y_policy = np.reshape(y[:,:-1],(len(y),height,width)) #(num, height, width)
@@ -143,16 +171,22 @@ def start_client(ip='127.0.0.1'):
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--workers', '-w', type=int, default=3, help='number of self-play workers')
-    parser.add_argument('--client', '-c', type=str, help='sole client of self-play')
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c', '--client', type=str, metavar='IP',
+                        help='specify ip address to connect to; if not specified, a new server will be started on localhost')
+    parser.add_argument('-p', '--selfplay', type=int, default=3, metavar='N', help='number of self-play workers')
+    parser.add_argument('--noevaluate', '-e', action='store_true')
+    parser.add_argument('--nooptimize', '-o', action='store_true')
     args = vars(parser.parse_args())
-    num_processes = args.get('workers')
+    num_processes = args.get('selfplay')
     ip = args.get('client')
     if ip is not None:
         is_client = True
     else:
         is_client = False
         ip = '127.0.0.1'
+    has_evaluator = not args.get('noevaluate')
+    has_optimizer = not args.get('nooptimize')
 
     if not is_client:
         # start new server
@@ -166,11 +200,12 @@ if __name__=='__main__':
         time.sleep(0.5)
         p.start()
 
-    if not is_client:
+    if has_evaluator:
         # evaluation
         p = Process(target=evaluate_worker, args=(10,))
         p.start()
 
+    if has_optimizer:
         # optimization
         data_queue, latest_weights, _ = start_client()
         data = DataBuffer(input_shape, policy_width, data_len=20000, queue=data_queue)
