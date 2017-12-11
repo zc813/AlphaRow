@@ -37,8 +37,8 @@ def self_play_worker(ip):
         print("PLAY | Sending data,", data[0].shape, data[1].shape)
         data_queue.put(data)
 
-def evaluate_worker(rounds, evaluation_fn=None):
-    _, in_weights, out_weights = start_client()
+def evaluate_worker(rounds, evaluation_fn=None, ip=None):
+    _, in_weights, out_weights = start_client(ip=ip)
     evaluation_fn = evaluation_fn or max_eval_fn
     game_player = new_game_player()
     latest_logic = new_logic(explore_rounds=2)
@@ -154,9 +154,10 @@ def start_server():
     server = new_server()
     server.get_server().serve_forever()
 
-def start_client(ip='127.0.0.1'):
+def start_client(ip=None):
     # data_queue = Queue()
     # latest_weights, best_weights = Weights(), Weights()
+    ip = ip or '127.0.0.1'
     register_client('data_queue', 'latest_weights', 'best_weights')
     print(ip)
     client = new_client(ip=ip)
@@ -196,18 +197,18 @@ if __name__=='__main__':
 
     # self-play
     for i in range(num_processes):
-        p = Process(target=self_play_worker, args=(ip,))
+        p = Process(target=self_play_worker, kwargs=dict(ip=ip))
         time.sleep(0.5)
         p.start()
 
     if has_evaluator:
         # evaluation
-        p = Process(target=evaluate_worker, args=(10,))
+        p = Process(target=evaluate_worker, args=(10,), kwargs=dict(ip=ip))
         p.start()
 
     if has_optimizer:
         # optimization
-        data_queue, latest_weights, _ = start_client()
+        data_queue, latest_weights, _ = start_client(ip=ip)
         data = DataBuffer(input_shape, policy_width, data_len=20000, queue=data_queue)
         # tensorboard_callback = TensorBoard(write_images=True, write_grads=True)
         save_callback = SaveOnTrainingEnd(savetopath)
