@@ -63,6 +63,7 @@ class MCTSLogic(ActionLogic):
     def _run(self, status, iterations, player_idx, rootnode=None):
         if rootnode is None:
             rootnode = self._new_node(None)
+            #TODO: investigate the visited number equal to 1
             rootnode.values.update(self.heuristics.root_value())
         for self.iteration in range(iterations):
             # selection & expansion

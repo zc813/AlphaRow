@@ -17,6 +17,7 @@ import numpy as np
 import copy
 from player import AIPlayer
 from gpuscheduler import set_gpu_fraction
+import argparse
 
 class Board(interface.Status):
     """
@@ -239,6 +240,19 @@ class Game(interface.Game):
 def run():
     # 可以先在 width=3, height=3, n=3 这种最简单的case下开发实验
     # 这种case下OK之后，再测试下 width=6, height=6, n=4 这种情况
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--human', action='store_true')
+    parser.add_argument('-w', '--weights', type=str, default='latest_model.h5', metavar='FILENAME')
+    parser.add_argument('-a', '--against', type=str, metavar='FILENAME')
+    parser.add_argument('-v', '--verbose', action='store_true')
+    parser.add_argument('-m', '--mute', action='store_true')
+    args = vars(parser.parse_args())
+    model_path = args.get('weights')
+    against_model_path = args.get('against')
+    ishumanplaying = args.get('human')
+    isverbose = args.get('verbose')
+    isgraphing = not args.get('mute')
+
     set_gpu_fraction(0)
     n = 4
     width, height = 6,6
@@ -247,28 +261,42 @@ def run():
     policy_width = height*width
     game = Game(board, n_in_row=n)
     model = new_model(input_shape, policy_width)
-    model.load_weights('latest_model.h5')
-    logic = ModelBasedMCTSLogic(model, iterations=200, explore_rounds=0, verbose=True)
+    model.load_weights(model_path)
+    logic = ModelBasedMCTSLogic(model, iterations=200, explore_rounds=0, verbose=isverbose)
+    if against_model_path is not None:
+        against_model = new_model(input_shape, policy_width)
+        against_model.load_weights(against_model_path)
+        against_logic = ModelBasedMCTSLogic(against_model, iterations=200, explore_rounds=0, verbose=isverbose)
+    else:
+        against_logic = MCTSLogic(iterations=200)
     # logic = MCTSLogic(UCT(),iterations=500)
+    if ishumanplaying:
+        while True:
+            game.set_player(0, AIPlayer(0, logic))
+            game.set_player(1, Human(1))
+            game.start(isgraphing)
+            game.set_player(1, AIPlayer(1, logic))
+            game.set_player(0, Human(0))
+            game.start(isgraphing)
     game.set_player(0, AIPlayer(0, logic))
-    game.set_player(1, Human(1))
-    #game.set_player(1, AIPlayer(1,MCTSLogic(iterations=250)))
+    game.set_player(1, AIPlayer(1, against_logic))
     result = [0,0]
     for i in range(10):
-        s0,s1 = game.start(True)
-        result[0] += max(s0,0)
-        result[1] += max(s1,0)
+        s0,s1 = game.start(isgraphing)
+        result[0] += s0/2.0+0.5
+        result[1] += s1/2.0+0.5
         # print('Winner:', )
         print(result)
     game.set_player(1, AIPlayer(1, logic))
     # game.set_player(1, Human(1))
-    game.set_player(0, AIPlayer(0,MCTSLogic(iterations=200)))
+    game.set_player(0, AIPlayer(0, against_logic))
     for i in range(10):
-        s0,s1 = game.start(True)
-        result[1] += max(s0,0)
-        result[0] += max(s1,0)
+        s0,s1 = game.start(isgraphing)
+        result[1] += s0/2.0+0.5
+        result[0] += s1/2.0+0.5
         # print('Winner:', )
         print(result)
+    print(result[0])
 
 
 
