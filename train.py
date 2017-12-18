@@ -220,13 +220,13 @@ if __name__=='__main__':
         # optimization
         # set_gpu_fraction(0.8)
         data_queue, latest_weights, _ = start_client(ip=ip)
-        data = DataBuffer(input_shape, policy_width, data_len=20000, queue=data_queue)
+        data = DataBuffer(input_shape, policy_width, data_len=100000, queue=data_queue)
         # tensorboard_callback = TensorBoard(write_images=True, write_grads=True)
         save_callback = SaveOnTrainingEnd(savetopath)
         optimize(databuffer=data,
                  out_weights=latest_weights,
-                 optimizer=SGD(lr=1e-2, momentum=0.9, nesterov=True),
-                #  optimizer=RMSprop(),
+                 optimizer=SGD(lr=1e-3, momentum=0.9, nesterov=True),  #TODO: sgd应该也ok
+                 # optimizer=RMSprop(),
                  epochs=30,
                  batch_size=32,
                  verbose=0,

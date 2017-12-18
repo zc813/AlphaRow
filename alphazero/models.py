@@ -15,12 +15,12 @@ def new_model(input_shape, policy_width, parameters=None, naive=True):
         # raise NotImplementedError
 
 def naive_model(input_shape, policy_width, parameters):
-    initializer = TruncatedNormal()
+    initializer = TruncatedNormal(stddev=1e-2)
     inputs = Input(input_shape)
 
     # Main net. Should be improved
-    x = Conv2D(32, (1, 1), kernel_initializer=initializer, bias_initializer=initializer, activation='relu', kernel_regularizer=regularizers.l2(1e-4))(inputs)
-    x = Conv2D(32, (3, 3), kernel_initializer=initializer, bias_initializer=initializer, kernel_regularizer=regularizers.l2(1e-4))(x)
+    x = Conv2D(32, (3, 3), padding='same', kernel_initializer=initializer, bias_initializer=initializer, activation='relu', kernel_regularizer=regularizers.l2(1e-4))(inputs)
+    x = Conv2D(64, (3, 3), padding='same', kernel_initializer=initializer, bias_initializer=initializer, kernel_regularizer=regularizers.l2(1e-4))(x)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
     x = Conv2D(64, (1, 1), kernel_initializer=initializer, bias_initializer=initializer, activation='relu', kernel_regularizer=regularizers.l2(1e-4))(x)

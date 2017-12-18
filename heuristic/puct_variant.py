@@ -2,7 +2,7 @@ from heuristic.heuristic import Heuristic
 import math
 
 class PUCT(Heuristic):
-    def __init__(self, num_player=2, c=1.0, ):
+    def __init__(self, num_player=2, c=5.0, ):
         super(PUCT, self).__init__(num_player)
         self.append_default_values(prior_probability=1.0,
                                    # puct=[math.inf]*self.num_players,

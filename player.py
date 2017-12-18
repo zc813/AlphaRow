@@ -14,7 +14,7 @@ class AIPlayer(Player):
         best_action = self.logic.get_action(status, self.player_idx)
 
         if self.monitor:
-            action_results = self.logic.get_children_results() # dict
+            action_results = self.logic.get_children_results() # dict todo：俊潇把这个π取了对数然后softmax
             status_compressed = status.to_number()
             history_entry = (self.player_idx, status_compressed, action_results, status.get_round())
             self.history.append(history_entry)    # (s, pi, z)

@@ -1,4 +1,5 @@
 from keras import backend as K
+from keras import losses
 from keras.preprocessing.image import ImageDataGenerator
 from keras.models import Model
 import numpy as np
@@ -74,9 +75,10 @@ class DataBuffer(object):
             self.data_buffer.get()
 
 def alphazero_loss(y_true, y_pred):
-    z = y_true[:,-1]
-    v = y_pred[:,-1]
+    z = y_true[:,-1:]
+    v = y_pred[:,-1:]
     pi = y_true[:,:-1]
     p = y_pred[:,:-1]
-    loss = K.square(z-v) - K.sum(pi * K.log(K.clip(p,1e-8,1)), axis=-1)
+    # loss = K.square(z-v) - K.sum(pi * K.log(K.clip(p,1e-8,1)), axis=-1) TODO：没看出来和下面的哪里不同了，注意z和v在这个里要拉平
+    loss = losses.mean_squared_error(z, v) + losses.categorical_crossentropy(pi, p)
     return loss

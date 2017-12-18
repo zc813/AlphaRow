@@ -81,10 +81,11 @@ class Board(interface.Status):
         raise NotImplementedError
 
     def to_number(self):
-        array = np.zeros((self.height, self.width, 2), dtype=np.uint8)
+        array = np.zeros((self.height, self.width, 2), dtype=np.int8)
         for key, player in self.states.items():
             h, w = self.move_to_location(key)
             array[h,w,0 if player==self.get_current_player_idx() else 1] = 1
+        array[:,:,1] *= -1 # TODO：参考宋俊潇，将对手都设为 -1
         return array
 
     def init_board(self):
@@ -262,7 +263,7 @@ def run():
     game = Game(board, n_in_row=n)
     model = new_model(input_shape, policy_width)
     model.load_weights(model_path)
-    logic = ModelBasedMCTSLogic(model, iterations=200, explore_rounds=0, verbose=isverbose)
+    logic = ModelBasedMCTSLogic(model, iterations=1000, explore_rounds=0, verbose=isverbose)
     if against_model_path is not None:
         against_model = new_model(input_shape, policy_width)
         against_model.load_weights(against_model_path)
